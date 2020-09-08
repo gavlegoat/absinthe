@@ -15,7 +15,12 @@ version:             0.1.0.0
 synopsis:            Abstract interpretation library
 
 -- A longer description of the package.
--- description:         
+description:
+  Absinthe is a library for performing abstract interpretation, a technique
+  used to analyze programs and prove their safety. For now Absinthe only
+  supports the analysis of programs with real valued variables, and we take no
+  pains to be safe with respect to floating-point operations. That is, Absinthe
+  assumes that floating-point operations do not introduce any error.
 
 -- The license under which the package is released.
 license:             MIT
@@ -31,7 +36,7 @@ author:              Greg Anderson
 maintainer:          ganderso@cs.utexas.edu
 
 -- A copyright notice.
--- copyright:           
+copyright:           (c) Greg Anderson, 2020
 
 -- category:            
 
@@ -50,13 +55,15 @@ library
                        Numeric.Abstraction.NumericalDomains
   
   -- Modules included in this library but not exported.
-  -- other-modules:       
+  other-modules:       Numeric.Abstraction.NumericalDomains.Interval,
+                       Numeric.Abstraction.NumericalDomains.Data,
+                       Numeric.Abstraction.NumericalDomains.Octagon
   
   -- LANGUAGE extensions used by modules in this package.
   -- other-extensions:    
   
   -- Other library packages from which modules are imported.
-  build-depends:       base >=4.9 && <4.10,
+  build-depends:       base >=4.9,
                        containers >=0.6
   
   -- Directories containing source files.
@@ -78,4 +85,4 @@ test-suite spec
                       base >=4.9 && <4.10,
                       containers >=0.6
   main-is:            Spec.hs
-  other-modules:      Numeric.Abstraction.NumericalDomainsSpec
+  other-modules:      Numeric.Abstraction.NumericalDomains.IntervalSpec
