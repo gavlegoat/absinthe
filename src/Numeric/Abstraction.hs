@@ -14,24 +14,31 @@ with several generic operations.
 {-# LANGUAGE FunctionalDependencies #-}
 
 module Numeric.Abstraction
-  ( AbstractDomain(..)
+  (
+  -- * Domains
+  --
+  -- $domains
+    AbstractDomain(..)
   -- * Folds
   --
   -- $folds
   , joins
   , meets
-  -- * Dimensions
-  --
-  -- $dimensions
-  , addDimensions
   ) where
 
 import qualified Data.Set as S
 import Data.Foldable
 
+-- $domains
+--
+-- Fundamentally, abstractions constrain some space of program varaibles.  We
+-- don't want to force any particular interpretation of the dimensions, so we
+-- will parameterize most data structures over a type variable (usually @d@)
+-- which represents some label for the variables. For example, the user could
+-- use the names of the program variables in which case @d@ would be @String@.
+
 -- | An 'AbstractDomain' captures the basic operations required for abstract
--- interpretation. An abstract domain includes a type 'd' which is used to
--- label the dimensions of the constrained space.
+-- interpretation.
 class AbstractDomain d a | a -> d where
   -- | The 'top' element contains every value.
   top :: S.Set d -> a
@@ -46,9 +53,9 @@ class AbstractDomain d a | a -> d where
   -- | Determine whether a given element is bottom.
   isBottom :: a -> Bool
   -- | Remove dimensions from the constrained space.
-  removeDimensions :: S.Set d -> a -> a
+  removeVars :: S.Set d -> a -> a
   -- | Get the set of dimensions constrained by this element.
-  constrainedDims :: a -> S.Set d
+  constrainedVars :: a -> S.Set d
 
 -- $folds
 --
@@ -59,19 +66,12 @@ class AbstractDomain d a | a -> d where
 -- provided set of dimensions.
 
 -- | Find the least upper bound of several elements of an abstract domain.
+-- This function assumes it's argument is not empty.
 joins :: (AbstractDomain d a, Foldable f) => S.Set d -> f a -> a
 joins s = foldl' join $ bottom s
 
 -- | Find the greatest lower bound of several elements of an abstract domain.
+-- This function assumes it's argument is not empty.
 meets :: (AbstractDomain d a, Foldable f) => S.Set d -> f a -> a
 meets s = foldl' meet $ top s
-
--- $dimensions
---
--- These functions manipulate the dimensions of the constrained space.
-
--- | Add new dimensions to the constrained space. The new dimensions are
--- unconstrained.
-addDimensions :: (AbstractDomain d a) => S.Set d -> a -> a
-addDimensions s a = join a $ top s
 
