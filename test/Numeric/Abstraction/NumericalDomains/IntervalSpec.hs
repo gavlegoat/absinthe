@@ -9,6 +9,7 @@ import qualified Data.Map as M
 
 testDims :: S.Set Integer
 testDims = S.fromList [0, 1, 2] 
+
 topI :: Interval Integer
 topI = top testDims
 

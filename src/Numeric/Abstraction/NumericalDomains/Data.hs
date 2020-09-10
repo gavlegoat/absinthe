@@ -31,6 +31,8 @@ module Numeric.Abstraction.NumericalDomains.Data
   , linConsAsTransform
   , foldlLinearConstraint
   , NumericalDomain(..)
+  , fromConstraints
+  , fromBounds
   ) where
 
 import qualified Data.Map.Strict as M
@@ -135,3 +137,21 @@ class AbstractDomain d a => NumericalDomain d a | a -> d where
   assign :: M.Map d (AffineTransform d) -> a -> a
   -- | Meet with a set of linear constraints.
   constrain :: S.Set (LinearConstraint d) -> a -> a
+
+-- | Generate a new abstract element from a set of constraints.
+fromConstraints :: NumericalDomain d a => S.Set d
+                -> S.Set (LinearConstraint d) -> a
+fromConstraints vars lcs = constrain lcs $ top vars
+
+-- | Generate a new abstract element from sets of upper and lower bounds.
+-- Variables may be present in none, one, or both of the upper and lower bound
+-- maps. Whenever the variable is not present in one of the maps it is
+-- unbounded in the associated direction.
+fromBounds :: Ord d => NumericalDomain d a => S.Set d -> M.Map d Double
+           -> M.Map d Double -> a
+fromBounds vars low high = fromConstraints vars $
+  S.union
+    (M.foldl (flip S.insert) S.empty $
+      M.mapWithKey (\d l -> mkLinearConstraint (M.singleton d (-1)) (-l)) low)
+    (M.foldl (flip S.insert) S.empty $
+      M.mapWithKey (\d h -> mkLinearConstraint (M.singleton d 1) h) high)

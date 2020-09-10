@@ -96,14 +96,15 @@ instance Show d => Show (Octagon d) where
                                 " <= " ++ show b
 
 octTop :: Ord d => S.Set d -> Octagon d
-octTop s = Octagon $ S.foldl' (\m a -> M.insert a Infinite m) M.empty $
-  S.cartesianProduct (S.insert Absent $ S.map NegVar s)
-                     (S.insert Absent $ S.map PosVar s)
+octTop s =
+  let rows = S.insert Absent $ S.union (S.map NegVar s) (S.map PosVar s)
+   in Octagon $ S.foldl' (\m a -> M.insert a Infinite m) M.empty $
+                S.cartesianProduct rows rows
 
 octBottom :: S.Set d -> Octagon d
 octBottom = OctBottom
 
-octJoin :: Ord d => Octagon d -> Octagon d -> Octagon d
+octJoin :: (Ord d, Show d) => Octagon d -> Octagon d -> Octagon d
 octJoin (OctBottom _) o             = o
 octJoin o             (OctBottom _) = o
 octJoin o1 o2 = case closure o1 of
@@ -117,14 +118,16 @@ octMeet (OctBottom s)   _           = OctBottom s
 octMeet _             (OctBottom s) = OctBottom s
 octMeet (Octagon a)   (Octagon b)   = Octagon $ M.unionWith min a b
 
-octIsTop :: Ord d => Octagon d -> Bool
+octIsTop :: (Ord d, Show d) => Octagon d -> Bool
 octIsTop o = case closure o of
                OctBottom _ -> False
-               Octagon m   -> M.null $ M.filter isFinite m where
+               Octagon m   -> M.null $ M.filterWithKey diffKey $
+                              M.filter isFinite m where
                  isFinite (Finite _) = True
                  isFinite Infinite   = False
+                 diffKey (i, j) _ = i /= j
 
-octIsBottom :: Ord d => Octagon d -> Bool
+octIsBottom :: (Ord d, Show d) => Octagon d -> Bool
 octIsBottom (OctBottom _) = True
 octIsBottom o             = case closure o of
                               OctBottom _ -> True
@@ -153,7 +156,7 @@ octConstrainedVars (Octagon m)   = M.foldlWithKey addVars S.empty m where
 -- return is a pair of half bounds where Infinite in the first bound indicates
 -- an interval which is unbounded below. This just forgets relational
 -- constraints.
-intEval :: Ord d => Octagon d -> AffineTransform d -> (HalfBound, HalfBound)
+intEval :: (Ord d, Show d) => Octagon d -> AffineTransform d -> (HalfBound, HalfBound)
 intEval (OctBottom _) _ = (Finite 1, Finite 0)
 intEval (Octagon m)   t = foldlAffineTransform (\(l, u) v c ->
   let lo = case halveBound $ m ! (PosVar v, NegVar v) of
@@ -176,7 +179,7 @@ intEval (Octagon m)   t = foldlAffineTransform (\(l, u) v c ->
                      else (Finite $ c * l', Finite $ c * u'))
    (Finite $ affTransConst t, Finite $ affTransConst t) t
 
-octAssign :: Ord d => M.Map d (AffineTransform d) -> Octagon d -> Octagon d
+octAssign :: (Ord d, Show d) => M.Map d (AffineTransform d) -> Octagon d -> Octagon d
 octAssign assigns oct = assign' assigns $ closure oct where
   assign' _  o@(OctBottom _) = o
   assign' as (Octagon m)     = Octagon $ M.foldlWithKey assignOne m as
@@ -289,7 +292,7 @@ octAssign assigns oct = assign' assigns $ closure oct where
                                          subVarTrans t i0
     else x) mp
 
-octConstrain :: (Ord d) => S.Set (LinearConstraint d) -> Octagon d -> Octagon d
+octConstrain :: (Ord d, Show d) => S.Set (LinearConstraint d) -> Octagon d -> Octagon d
 octConstrain lcs oct = let oct' = closure oct
                         in meets (octConstrainedVars oct) $
                           map (oneConstraint oct') $ S.elems lcs
@@ -382,7 +385,7 @@ octConstrain lcs oct = let oct' = closure oct
       _ -> x
 
 -- Reduce an octagon to a canonical representation.
-closure :: Ord d => Octagon d -> Octagon d
+closure :: (Ord d, Show d) => Octagon d -> Octagon d
 closure o@(OctBottom _) = o
 closure o@(Octagon m) =
   let vs = octConstrainedVars o
@@ -408,13 +411,13 @@ closure o@(Octagon m) =
           else Octagon $ M.adjust (const $ Finite 0.0) (PosVar v, PosVar v) $
                          M.adjust (const $ Finite 0.0) (NegVar v, NegVar v) mp
 
-instance Ord d => Eq (Octagon d) where
+instance (Ord d, Show d) => Eq (Octagon d) where
   a == b = case (closure a, closure b) of
              (OctBottom s1, OctBottom s2) -> s1 == s2
              (Octagon m1  , Octagon m2  ) -> m1 == m2
              _                            -> False
 
-instance Ord d => AbstractDomain d (Octagon d) where
+instance (Ord d, Show d) => AbstractDomain d (Octagon d) where
   top = octTop
   bottom = octBottom
   join = octJoin
@@ -424,6 +427,6 @@ instance Ord d => AbstractDomain d (Octagon d) where
   removeVars = octRemoveVars
   constrainedVars = octConstrainedVars
 
-instance Ord d => NumericalDomain d (Octagon d) where
+instance (Ord d, Show d) => NumericalDomain d (Octagon d) where
   assign = octAssign
   constrain = octConstrain

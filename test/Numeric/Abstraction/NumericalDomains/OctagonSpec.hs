@@ -8,7 +8,7 @@ import qualified Data.Set as S
 import qualified Data.Map as M
 
 testDims :: S.Set Integer
-testDims = S.fromList [0, 1, 2]
+testDims = S.fromList [0, 1]
 
 topO :: Octagon Integer
 topO = top testDims
@@ -16,47 +16,88 @@ topO = top testDims
 bottomO :: Octagon Integer
 bottomO = bottom testDims
 
+-- A normal closed octagon
 oct1 :: Octagon Integer
-oct1 = undefined  -- A normal octagon
+oct1 = fromBounds (S.fromList [0, 1]) (M.fromList [(0, 0), (1, -1)])
+                  (M.fromList [(0, 2), (1, 2)])
 
+-- An unsatisfiable octagon
 oct2 :: Octagon Integer
-oct2 = undefined    -- An unsatisfiable Octagon
+oct2 = fromBounds (S.fromList [0, 1]) (M.singleton 0 1) (M.singleton 0 0)
 
+-- An open octagon
 oct3 :: Octagon Integer
-oct3 = undefined  -- Another normal octagon
+oct3 = fromConstraints
+         (S.fromList [0, 1])
+         (S.fromList [ mkLinearConstraint (M.fromList [(0, 1), (1, 1)]) 3
+                     , mkLinearConstraint (M.fromList [(0, -1), (1, 1)]) 1
+                     ])
 
+--   -1 0 1 2 3
+--  3 . . . . .
+--  2 . +---+ .
+--  1 . |/.\| .
+--  0 ./| . |\.
+-- -1 / +---+ \
+-- -2 . . . . .
+
+-- oct1 `join` oct3
 joinRes :: Octagon Integer
-joinRes = undefined   -- oct1 `join` oct3
+joinRes = fromConstraints
+            (S.fromList [0, 1])
+            (S.fromList [ mkLinearConstraint (M.fromList [(0, 0), (1, 1)]) 2
+                        , mkLinearConstraint (M.fromList [(0, 1), (1, 1)]) 4
+                        , mkLinearConstraint (M.fromList [(0, -1), (1, 1)]) 2
+                        ])
 
+-- oct1 `meet` oct3
 meetRes :: Octagon Integer
-meetRes = undefined   -- oct1 `meet` oct3
+meetRes = fromConstraints
+            (S.fromList [0, 1])
+            (S.fromList [ mkLinearConstraint (M.fromList [(0, 1), (1, 1)]) 3
+                        , mkLinearConstraint (M.fromList [(0, -1), (1, 1)]) 1
+                        , mkLinearConstraint (M.fromList [(0, 1), (1, 0)]) 2
+                        , mkLinearConstraint (M.fromList [(0, -1), (1, 0)]) 0
+                        , mkLinearConstraint (M.fromList [(0, 0), (1, -1)]) 1
+                        ])
 
 zeroTrans :: AffineTransform Integer
 zeroTrans = mkAffineTransform (M.fromList []) 0
 
+-- oct1[x_0 := 0]
 octZero :: Octagon Integer
-octZero = undefined   -- oct1[x_0 := 0]
+octZero = fromBounds
+            (S.fromList [0, 1])
+            (M.fromList [(0, 0), (1, -1)])
+            (M.fromList [(0, 0), (1, 2)])
 
 allTrans :: AffineTransform Integer
-allTrans = mkAffineTransform (M.fromList [(0, 1), (1, 1), (2, 1)]) 0
+allTrans = mkAffineTransform (M.fromList [(0, 1), (1, 1)]) 0
 
 octUnbound :: Octagon Integer
-octUnbound = undefined
+octUnbound = fromBounds
+               (S.fromList [0, 1])
+               (M.fromList [(1, -1)])
+               (M.fromList [(1, 2)])
 
 removeOct :: Octagon Integer
-removeOct = undefined
-
-midTrans :: AffineTransform Integer
-midTrans = mkAffineTransform (M.fromList [(0, 1), (2, 1)]) 2
-
-octMid :: Octagon Integer
-octMid = undefined
+removeOct = fromBounds (S.singleton 1) (M.singleton 1 (-1)) (M.singleton 1 2)
 
 negTrans :: AffineTransform Integer
-negTrans = mkAffineTransform (M.fromList [(1, -1), (2, -1)]) (-1)
+negTrans = mkAffineTransform (M.fromList [(1, -1)]) (-1)
 
+-- oct1[x_0 := negTrans]
+-- x' := x - y - 1, a <= x <= b, c <== y <= d
+-- c <= y <= d stays the same.
+-- x - 1 = x' + y -> a - 1 <= x' + y <= b - 1
 octNeg :: Octagon Integer
-octNeg = undefined
+octNeg = fromConstraints
+           (S.fromList [0, 1])
+           (S.fromList [ mkLinearConstraint (M.singleton 1 1) 2
+                       , mkLinearConstraint (M.singleton 1 (-1)) 1
+                       , mkLinearConstraint (M.fromList [(0, 1), (1, 1)]) 1
+                       , mkLinearConstraint (M.fromList [(0, -1), (1, -1)]) 1
+                       ])
 
 linConsUnsat :: LinearConstraint Integer
 linConsUnsat = mkLinearConstraint (M.fromList []) (-1)
@@ -64,20 +105,43 @@ linConsUnsat = mkLinearConstraint (M.fromList []) (-1)
 linCons1 :: LinearConstraint Integer
 linCons1 = mkLinearConstraint (M.fromList [(0, 1)]) 1
 
+-- oct3 `constraint` linCons1
 lc1 :: Octagon Integer
-lc1 = undefined
+lc1 = fromConstraints
+        (S.fromList [0, 1])
+        (S.fromList [ mkLinearConstraint (M.fromList [(0, 1)]) 1
+                    , mkLinearConstraint (M.fromList [(0, 1), (1, 1)]) 3
+                    , mkLinearConstraint (M.fromList [(0, -1), (1, 1)]) 1
+                    ])
 
 linCons2 :: S.Set (LinearConstraint Integer)
-linCons2 = S.fromList $
-  [ mkLinearConstraint (M.fromList [(0, 1), (1, 1)]) 1
-  , mkLinearConstraint (M.fromList [(2, -1)]) (-1)
+linCons2 = S.fromList
+  [ mkLinearConstraint (M.fromList [(0, 1), (1, 1)]) 3
+  , mkLinearConstraint (M.fromList [(0, 2), (1, -1)]) (-1)
   ]
 
-oct4 :: Octagon Integer
-oct4 = undefined
+-- 0 <= x <= 2, -1 <= y <= 2 and x + y <= 3 and 2 x - y <= -1
+--   -2-1 0 1 2 3 4 5
+--  5 + . . . + . . .
+--  4 . + . ./. . . .
+--  3 . . + + . . . .
+--  2 . . +-+-+ . . .
+--  1 . . + . + . . .
+--  0 . ./| . | + . .
+-- -1 . + +---+ . + .
+-- -2 ./. . . . . . +
+-- -3 + . . . . . . .
 
+-- oct1 `constraint` linCons2
 lc2 :: Octagon Integer
-lc2 = undefined
+lc2 = fromConstraints
+        (S.fromList [0, 1])
+        (S.fromList [ mkLinearConstraint (M.singleton 1 (-1)) 1
+                    , mkLinearConstraint (M.singleton 0 1) 2
+                    , mkLinearConstraint (M.singleton 0 (-1)) 0
+                    , mkLinearConstraint (M.fromList [(0, 1), (1, 1)]) 3
+                    , mkLinearConstraint (M.fromList [(0, 1), (1, -1)]) 1.5
+                    ])
 
 spec :: Spec
 spec = do
@@ -131,8 +195,8 @@ spec = do
 
   describe "removeVars" $ do
     it "should remove the right variables" $ do
-      constrainedVars (removeVars (S.fromList [0, 1]) oct1) `shouldBe`
-          S.fromList [2]
+      constrainedVars (removeVars (S.fromList [0]) oct1) `shouldBe`
+          S.fromList [1]
     it "should leave the other constraints intact" $ do
       removeVars (S.singleton 0) oct1 `shouldBe` removeOct
 
@@ -140,20 +204,11 @@ spec = do
     it "should yield zero" $
       assign (M.singleton 0 zeroTrans) oct1 `shouldBe` octZero
 
-  -- TODO: From here down
-
-  describe "assioctunbounded" $ do
+  describe "assign unbounded" $ do
     it "should give an unbounded dimension" $ do
       assign (M.singleton 0 allTrans) oct1 `shouldBe` octUnbound
-    it "should go to top" $ do
-      assign (M.fromList [(0, allTrans), (1, allTrans), (2, allTrans)]) oct1
-          `shouldSatisfy` isTop
-      assign (M.fromList [(0, allTrans), (1, allTrans), (2, allTrans)]) oct1
-          `shouldBe` topO
 
   describe "assign" $ do
-    it "should work for a normal case" $ do
-      assign (M.singleton 0 midTrans) oct1 `shouldBe` octMid
     it "should work with negative coefficients" $ do
       assign (M.singleton 0 negTrans) oct1 `shouldBe` octNeg
 
@@ -166,7 +221,7 @@ spec = do
       constrain S.empty octZero `shouldBe` octZero
     it "should behave reasonably for normal cases" $ do
       constrain (S.singleton linCons1) oct3 `shouldBe` lc1
-      constrain linCons2 oct4 `shouldBe` lc2
+      constrain linCons2 oct1 `shouldBe` lc2
 
 main :: IO ()
 main = hspec spec
